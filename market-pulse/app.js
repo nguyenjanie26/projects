@@ -77,6 +77,16 @@ function showToast(msg) {
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const MAX_PER_FEED = 6;
 
+/* Twelve Data free API key. For security it is NOT stored in this (public) source —
+   the user pastes it in Settings and it lives in their browser's localStorage
+   (key `mpulse_td_key`). Powers live indices, commodities & forex; free tier is
+   8 symbols/min, so we request exactly 8 below. Empty = Yahoo fallback / demo. */
+const TD_KEY = '';
+
+/* The free tier doesn't carry raw index/oil symbols, so we track the ETFs that
+   mirror them (real, live prices). These rows are relabelled + shown as $ prices. */
+const ETF_PROXY = { '^GSPC': 'SPY', '^IXIC': 'QQQ', '^DJI': 'DIA', 'CL=F': 'USO' };
+
 /* credible sources — all verified working via rss2json free tier */
 const FEEDS = [
   { name: 'Bloomberg',    url: 'https://feeds.bloomberg.com/markets/news.rss' },
@@ -116,9 +126,9 @@ const SIDEBAR_GROUPS = [
 ];
 
 const SIDEBAR_NAMES = {
-  '^GSPC':'S&P 500','^IXIC':'Nasdaq','^DJI':'Dow Jones','^RUT':'Russell 2000',
+  '^GSPC':'S&P 500 · SPY','^IXIC':'Nasdaq 100 · QQQ','^DJI':'Dow 30 · DIA','^RUT':'Russell 2000',
   'BTC-USD':'Bitcoin','ETH-USD':'Ethereum','SOL-USD':'Solana',
-  'GC=F':'Gold','CL=F':'WTI Crude','SI=F':'Silver',
+  'GC=F':'Gold','CL=F':'Crude oil · USO','SI=F':'Silver',
   '^TNX':'10Y Yield','^TYX':'30Y Yield','HYG':'HY Corp Bonds',
   'EURUSD=X':'EUR / USD','JPY=X':'USD / JPY','GBPUSD=X':'GBP / USD'
 };
@@ -151,15 +161,15 @@ const GLOSSARY = [
    Plain-English explanation of every symbol in the ribbon
    & sidebar. Grouped for the "Learn indices" modal. */
 const INDICATORS = {
-  '^GSPC': { group:'Stock indices', name:'S&P 500', what:'Tracks the 500 largest US public companies. The single most-watched gauge of how the US stock market is doing overall.', why:'When it rises, most large US companies are gaining value — good for retirement funds and index investors. <b>Up = optimism, down = caution.</b>' },
-  '^IXIC': { group:'Stock indices', name:'Nasdaq Composite', what:'Tracks 3,000+ companies on the Nasdaq exchange, heavily weighted toward technology firms like Apple, Microsoft and Nvidia.', why:'Moves more sharply than the S&P 500. <b>A tech-heavy "risk appetite" thermometer</b> — it soars in tech booms and falls hard in selloffs.' },
-  '^DJI':  { group:'Stock indices', name:'Dow Jones Industrial Average', what:'Tracks 30 large, established US "blue-chip" companies. The oldest and most famous US market index.', why:'A snapshot of big, stable household-name firms. <b>Less tech-driven</b> than the Nasdaq, so it tells a steadier story.' },
+  '^GSPC': { group:'Stock indices', name:'S&P 500 (tracked via SPY)', what:'Tracks the 500 largest US public companies — the most-watched gauge of the US stock market. The live price shown is SPY, the ETF that mirrors the index (this is how most beginners actually buy it).', why:'When it rises, most large US companies are gaining value — good for retirement funds and index investors. <b>Up = optimism, down = caution.</b>' },
+  '^IXIC': { group:'Stock indices', name:'Nasdaq 100 (tracked via QQQ)', what:'Tracks the 100 biggest non-financial Nasdaq companies, heavily weighted toward tech like Apple, Microsoft and Nvidia. Live price shown is QQQ, the ETF that mirrors it.', why:'Moves more sharply than the S&P 500. <b>A tech-heavy "risk appetite" thermometer</b> — it soars in tech booms and falls hard in selloffs.' },
+  '^DJI':  { group:'Stock indices', name:'Dow 30 (tracked via DIA)', what:'Tracks 30 large, established US "blue-chip" companies — the oldest famous US index. Live price shown is DIA, the ETF that mirrors it.', why:'A snapshot of big, stable household-name firms. <b>Less tech-driven</b> than the Nasdaq, so it tells a steadier story.' },
   '^RUT':  { group:'Stock indices', name:'Russell 2000', what:'Tracks 2,000 small US companies ("small caps").', why:'Small firms depend most on the domestic economy. <b>A leading clue on US growth and risk-taking</b> — rises when investors feel bold.' },
   'BTC-USD':{ group:'Crypto', name:'Bitcoin', what:'The first and largest cryptocurrency — a digital asset not controlled by any government or bank.', why:'Highly volatile. <b>Often seen as a "risk-on" bet</b> and sometimes as a hedge against currency weakness. Can move 10%+ in a day.' },
   'ETH-USD':{ group:'Crypto', name:'Ethereum', what:'The second-largest cryptocurrency. Its network powers apps, smart contracts and most of the crypto economy.', why:'Tends to follow Bitcoin but swings even more. <b>A barometer for the broader crypto/tech-innovation mood.</b>' },
   'SOL-USD':{ group:'Crypto', name:'Solana', what:'A fast, lower-cost blockchain competing with Ethereum for apps and trading.', why:'A higher-risk "altcoin." <b>Rises sharply in crypto rallies</b>, falls hardest in downturns.' },
   'GC=F':  { group:'Commodities', name:'Gold', what:'The price of one ounce of gold, the classic "safe haven" asset.', why:'Investors buy gold when they\'re nervous about inflation, war, or falling currencies. <b>Rising gold often signals fear</b> in markets.' },
-  'CL=F':  { group:'Commodities', name:'WTI Crude Oil', what:'The US benchmark price for a barrel of crude oil.', why:'Drives gas prices, shipping and manufacturing costs. <b>Higher oil = higher inflation</b> and pressure on consumers; lower oil eases costs.' },
+  'CL=F':  { group:'Commodities', name:'Crude oil (tracked via USO)', what:'Crude oil drives gas, shipping and manufacturing costs. The live price shown is USO, the ETF that follows the price of oil.', why:'<b>Higher oil = higher inflation</b> and pressure on consumers; lower oil eases costs.' },
   'SI=F':  { group:'Commodities', name:'Silver', what:'The price of silver — both a precious metal and an industrial material used in electronics and solar panels.', why:'Acts partly like gold (a safe haven) and partly like an industrial metal. <b>Reflects both fear and factory demand.</b>' },
   '^TNX':  { group:'Bonds & rates', name:'10-Year Treasury Yield', what:'The interest rate the US government pays to borrow money for 10 years. The world\'s most important interest rate.', why:'Sets the baseline for mortgages, car loans and savings rates. <b>Rising yields make borrowing pricier</b> and can pull stocks down.' },
   '^TYX':  { group:'Bonds & rates', name:'30-Year Treasury Yield', what:'The interest rate on 30-year US government debt — the longest-term benchmark.', why:'Reflects long-run inflation and growth expectations. <b>A rising 30-year yield signals concern</b> about future inflation or debt.' },
@@ -284,28 +294,60 @@ async function loadMarketData() {
     });
   } catch (_) {}
 
-  /* 2. indices / commodities / bonds / FX — Yahoo Finance (best effort).
-     Yahoo now rate-limits and sometimes requires auth, so this may fail;
-     when it does, those rows keep the snapshot and show a "demo" note. */
+  /* 2. indices (via ETFs) / gold / FX — Twelve Data (reliable, free key required).
+     Exactly 8 symbols to stay inside the free 8/min limit. Key from browser storage. */
+  const tdKey = (localStorage.getItem('mpulse_td_key') || TD_KEY || '').trim();
+  if (tdKey) {
+    try {
+      const tdMap = {
+        '^GSPC': 'SPY', '^IXIC': 'QQQ', '^DJI': 'DIA',
+        'CL=F': 'USO', 'GC=F': 'XAU/USD',
+        'EURUSD=X': 'EUR/USD', 'JPY=X': 'USD/JPY', 'GBPUSD=X': 'GBP/USD'
+      };
+      const tdSyms = [...new Set(Object.values(tdMap))].join(',');
+      const r = await fetch(`https://api.twelvedata.com/quote?symbol=${encodeURIComponent(tdSyms)}&apikey=${tdKey}`, { signal: AbortSignal.timeout(9000) });
+      const d = await r.json();
+      Object.entries(tdMap).forEach(([ysym, tsym]) => {
+        // batch responses are keyed by symbol; a single symbol returns a flat object
+        const q = d[tsym] || (d.symbol === tsym ? d : null);
+        if (q && q.close != null && !q.code) {
+          marketData[ysym] = {
+            price: +q.close,
+            change: +q.change || 0,
+            changePct: +q.percent_change || 0,
+            name: SIDEBAR_NAMES[ysym] || q.name || ysym,
+            stale: false,
+            etf: !!ETF_PROXY[ysym]
+          };
+          gotLive = true;
+        }
+      });
+    } catch (_) {}
+  }
+
+  /* 3. anything still on the snapshot (e.g. bond yields ^TNX/^TYX, HYG, or
+     symbols TD didn't return) — try Yahoo Finance via proxy as a last resort. */
   try {
-    const syms = [...new Set(SIDEBAR_GROUPS.flatMap(g => g.syms))].filter(s => !s.endsWith('-USD'));
-    const y = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,shortName`;
-    const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(y), { signal: AbortSignal.timeout(9000) });
-    const wrapper = await res.json();
-    const data = JSON.parse(wrapper.contents);
-    const quotes = data?.quoteResponse?.result || [];
-    quotes.forEach(q => {
-      if (q.regularMarketPrice != null) {
-        marketData[q.symbol] = {
-          price: q.regularMarketPrice,
-          change: q.regularMarketChange,
-          changePct: q.regularMarketChangePercent,
-          name: q.shortName || SIDEBAR_NAMES[q.symbol] || q.symbol,
-          stale: false
-        };
-        gotLive = true;
-      }
-    });
+    const stillStale = [...new Set(SIDEBAR_GROUPS.flatMap(g => g.syms))].filter(s => marketData[s] && marketData[s].stale);
+    if (stillStale.length) {
+      const y = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${stillStale.join(',')}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,shortName`;
+      const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(y), { signal: AbortSignal.timeout(9000) });
+      const wrapper = await res.json();
+      const data = JSON.parse(wrapper.contents);
+      const quotes = data?.quoteResponse?.result || [];
+      quotes.forEach(q => {
+        if (q.regularMarketPrice != null) {
+          marketData[q.symbol] = {
+            price: q.regularMarketPrice,
+            change: q.regularMarketChange,
+            changePct: q.regularMarketChangePercent,
+            name: q.shortName || SIDEBAR_NAMES[q.symbol] || q.symbol,
+            stale: false
+          };
+          gotLive = true;
+        }
+      });
+    }
   } catch (_) {}
 
   if (gotLive) setCache(cacheKey, marketData);
@@ -379,14 +421,15 @@ function renderMarket() {
 
 function formatPrice(sym, val) {
   if (val == null) return '—';
+  const md = marketData[sym];
+  if (md && md.etf) return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (sym === 'BTC-USD' || sym === 'ETH-USD') return '$' + val.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  if (sym.includes('USD') || sym.includes('JPY') || sym === 'GC=F' || sym === 'CL=F') {
-    return val < 10 ? val.toFixed(4) : val.toFixed(2);
-  }
-  if (sym.startsWith('^')) {
-    if (sym === '^TNX' || sym === '^TYX') return val.toFixed(3) + '%';
-    return val.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  }
+  if (sym === 'SOL-USD') return '$' + val.toFixed(2);
+  if (sym === '^TNX' || sym === '^TYX') return val.toFixed(3) + '%';
+  if (sym === 'GC=F' || sym === 'SI=F') return '$' + val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (sym === 'CL=F') return '$' + val.toFixed(2);
+  if (sym.includes('USD') || sym.includes('JPY')) return val < 10 ? val.toFixed(4) : val.toFixed(2);
+  if (sym.startsWith('^')) return val.toLocaleString('en-US', { maximumFractionDigits: 2 });
   return val.toFixed(2);
 }
 
@@ -419,8 +462,8 @@ function renderStatCards() {
 
   const cards = [
     {
-      label: 'S&P 500',
-      val: spx ? spx.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
+      label: spx && spx.etf ? 'S&P 500 · SPY' : 'S&P 500',
+      val: spx ? formatPrice('^GSPC', spx.price) : '—',
       sub: spx ? (spx.changePct > 0 ? '▲' : '▼') + ' ' + Math.abs(spx.changePct).toFixed(2) + '% today' : '',
       color: spx ? (spx.changePct >= 0 ? 'green' : 'red') : 'blue'
     },
@@ -431,8 +474,8 @@ function renderStatCards() {
       color: btc ? (btc.changePct >= 0 ? 'green' : 'red') : 'gold'
     },
     {
-      label: 'WTI Crude Oil',
-      val: oil ? '$' + oil.price.toFixed(2) : '—',
+      label: oil && oil.etf ? 'Crude oil · USO' : 'WTI Crude Oil',
+      val: oil ? formatPrice('CL=F', oil.price) : '—',
       sub: oil ? (oil.changePct > 0 ? '▲' : '▼') + ' ' + Math.abs(oil.changePct).toFixed(2) + '% today' : '',
       color: oil ? (oil.changePct >= 0 ? 'green' : 'red') : 'gold'
     },
@@ -845,7 +888,18 @@ function openIndicatorLibrary() {
 
 function openSettings() {
   const current = localStorage.getItem('mpulse_claude_project') || '';
+  const tdCurrent = localStorage.getItem('mpulse_td_key') || '';
   const html = `
+    <div class="setting-block">
+      <div class="setting-label">Live market-data API key (Twelve Data)</div>
+      <div class="setting-hint">
+        Paste your free <a href="https://twelvedata.com/register" target="_blank" rel="noopener" style="color:var(--accent)">Twelve Data</a>
+        key to turn on live indices, gold, oil and forex. It's stored <b>only in this browser</b>
+        (never uploaded or shared), so you enter it once per device. Crypto is always live without a key.
+      </div>
+      <input class="setting-input" id="td-key-input" placeholder="e.g. a1b2c3d4e5f6..." value="${escHtml(tdCurrent)}">
+      <button class="setting-save" onclick="saveTdKey()">Save key</button>
+    </div>
     <div class="setting-block">
       <div class="setting-label">Your Claude project link</div>
       <div class="setting-hint">
@@ -878,6 +932,20 @@ function saveClaudeProject() {
     showToast('Cleared — questions open a new Claude chat');
   }
   closeModal();
+}
+
+function saveTdKey() {
+  const val = document.getElementById('td-key-input').value.trim();
+  if (val) {
+    localStorage.setItem('mpulse_td_key', val);
+    showToast('Key saved — loading live prices…');
+  } else {
+    localStorage.removeItem('mpulse_td_key');
+    showToast('Key cleared — using demo/fallback prices');
+  }
+  localStorage.removeItem('mpulse_market'); // bust cached quotes so live data loads now
+  closeModal();
+  loadMarketData();
 }
 
 /* ─── glossary ────────────────────────────────────────── */
@@ -986,4 +1054,5 @@ window.openIndicatorLibrary = openIndicatorLibrary;
 window.openSettings = openSettings;
 window.closeModal = closeModal;
 window.saveClaudeProject = saveClaudeProject;
+window.saveTdKey = saveTdKey;
 window.toggleFavorite = toggleFavorite;
