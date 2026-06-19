@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Pulse — Global Finance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .spin { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ── ticker tape ──────────────────────────────────── -->
+<div class="ticker-wrap" aria-hidden="true">
+  <div class="ticker-track" id="ticker-track">
+    <span class="tick-item"><span class="tick-sym">SPX</span><span class="tick-val">—</span><span class="tick-chg flat">—</span></span>
+  </div>
+</div>
+
+<!-- ── top bar ──────────────────────────────────────── -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-mark">MP</div>
+    <div>
+      <span class="logo-name">Market Pulse</span>
+      <span class="logo-sub">Global finance, simplified</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+    <div id="clock">—</div>
+    <button class="refresh-btn" onclick="openIndicatorLibrary()" title="Learn what every index means">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      Learn indices
+    </button>
+    <button class="refresh-btn" onclick="openSettings()" title="Settings — link your Claude project">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadAll()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+        <path d="M21 12a9 9 0 11-3-6.7"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+</header>
+
+<!-- ── two-column layout ─────────────────────────────── -->
+<div class="layout">
+
+  <!-- sidebar -->
+  <aside class="sidebar">
+    <!-- fear & greed gauge -->
+    <div class="side-section" style="padding: 0 16px 8px;">
+      <div class="side-header" style="padding-left:0;padding-right:0;">
+        <span class="side-label">Market sentiment</span>
+      </div>
+      <div class="fng-box">
+        <div class="fng-label">Fear &amp; Greed Index</div>
+        <div class="fng-bar-wrap">
+          <div class="fng-needle" style="left: 62%"></div>
+        </div>
+        <div class="fng-val">62</div>
+        <div class="fng-zone">Greed</div>
+      </div>
+    </div>
+    <hr class="side-divider">
+
+    <!-- dynamic market data -->
+    <div id="sidebar-markets">
+      <!-- populated by app.js -->
+      <div style="padding:16px;color:var(--text-lo);font-size:12px">Loading market data…</div>
+    </div>
+
+    <div id="data-notice" style="display:none; margin: 0 16px 8px; padding: 8px 10px; font-size: 10px; line-height: 1.6; color: var(--gold); background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); border-radius: 4px;">
+      <b>Demo prices shown.</b> Live crypto is from CoinGecko; indices/commodities couldn't be fetched (Yahoo rate-limited). See "Live data" in the readme to add a free API key.
+    </div>
+    <div style="padding: 8px 16px; font-size: 10px; color: var(--text-lo); line-height: 1.6; margin-top: 8px;">
+      Crypto: CoinGecko · Indices: Yahoo Finance · <span id="last-refresh">—</span><br>
+      Live data may be 15–20 min delayed.
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main class="main">
+
+    <!-- stat cards -->
+    <div class="stat-row" id="stat-cards">
+      <div class="stat-card blue"><div class="stat-card-label">S&P 500</div><div class="stat-card-val">—</div></div>
+      <div class="stat-card gold"><div class="stat-card-label">Bitcoin</div><div class="stat-card-val">—</div></div>
+      <div class="stat-card red"><div class="stat-card-label">WTI Crude</div><div class="stat-card-val">—</div></div>
+      <div class="stat-card blue"><div class="stat-card-label">10Y Yield</div><div class="stat-card-val">—</div></div>
+    </div>
+
+    <!-- controls -->
+    <div class="controls-bar">
+      <div class="cat-filters">
+        <button class="cat-btn active" onclick="filterCat('all',this)">All stories</button>
+        <button class="cat-btn" onclick="filterCat('stocks',this)">Stocks</button>
+        <button class="cat-btn" onclick="filterCat('economy',this)">Economy</button>
+        <button class="cat-btn" onclick="filterCat('crypto',this)">Crypto</button>
+        <button class="cat-btn" onclick="filterCat('commodities',this)">Commodities</button>
+        <button class="cat-btn" onclick="filterCat('bonds',this)">Bonds</button>
+        <button class="cat-btn" onclick="filterCat('forex',this)">Forex</button>
+        <button class="cat-btn cat-saved" onclick="filterCat('saved',this)" title="Your starred stories">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Saved <span id="saved-count" style="opacity:.7"></span>
+        </button>
+      </div>
+      <div class="right-controls">
+        <input type="text" class="search-box" id="search" placeholder="Search stories…" autocomplete="off">
+        <div class="level-seg" title="Reading complexity level">
+          <button class="active" onclick="setLevel('beginner',this)">Beginner</button>
+          <button onclick="setLevel('intermediate',this)">Intermediate</button>
+          <button onclick="setLevel('expert',this)">Expert</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- story count -->
+    <div style="font-size:11px;color:var(--text-lo);margin-bottom:10px;font-family:var(--mono)">
+      <span id="story-count">—</span> stories · sourced from Reuters, AP, MarketWatch, CNBC, FT &amp; Yahoo Finance
+    </div>
+
+    <!-- news feed -->
+    <div class="news-feed" id="news-feed"></div>
+
+    <!-- glossary -->
+    <div class="glossary-section" id="glossary-section">
+      <div class="glossary-header" onclick="toggleGlossary()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-lo)" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <span class="glossary-title">Finance glossary — 20 key terms explained for beginners</span>
+        <svg class="glossary-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="glossary-body">
+        <div class="glossary-grid" id="glossary-grid"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- footer -->
+<footer class="footer">
+  Market Pulse · News sourced from Reuters, Associated Press, MarketWatch, CNBC, Financial Times, Yahoo Finance ·
+  For informational purposes only — not financial advice
+</footer>
+
+<!-- ── modal overlay (indicator library + settings) ──── -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">—</span>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

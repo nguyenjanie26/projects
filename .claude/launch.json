@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "market-pulse",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd '/Users/tranganh261006/Desktop/Claude Folder/market-pulse' && python3 -m http.server $PORT"],
+      "port": 5173,
+      "autoPort": true
+    }
+  ]
+}
